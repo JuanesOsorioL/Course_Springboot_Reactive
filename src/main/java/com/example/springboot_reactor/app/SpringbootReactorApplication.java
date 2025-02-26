@@ -1,7 +1,9 @@
 package com.example.springboot_reactor.app;
 
 
+import com.example.springboot_reactor.app.models.Comentarios;
 import com.example.springboot_reactor.app.models.Usuario;
+import com.example.springboot_reactor.app.models.UsuarioComentarios;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -31,11 +33,26 @@ public class SpringbootReactorApplication implements CommandLineRunner {
         // agregando_el_map_con_el_operador_filter();
         // ejemplo_map_filter_consumiendo_una_lista();
         // ejemplo_flapmap();
-        //ejemplo_flapmap_de_usuario_to_list();
-        ejemplo_collectList();
+        // ejemplo_flapmap_de_usuario_to_list();
+        // ejemplo_collectList();
+        ejemplo_usuarioComentarioFlatMap();
     }
 
+    private void ejemplo_usuarioComentarioFlatMap() {
+      Mono<Usuario> usuarioMono=Mono.fromCallable(()->new Usuario("juan","carlos"));
 
+      Mono<Comentarios> comentariosUsuarioMono=Mono.fromCallable(()->{
+          Comentarios comentarios=new Comentarios();
+          comentarios.addComentario("primer comentario");
+          comentarios.addComentario("segundo comentario");
+          comentarios.addComentario("tercero comentario");
+          comentarios.addComentario("cuarto comentario");
+          return comentarios;
+      });
+
+      usuarioMono.flatMap(usuario -> comentariosUsuarioMono.map(comentarios -> new UsuarioComentarios(usuario,comentarios)))
+              .subscribe(usuarioComentarios -> log.info(usuarioComentarios.toString()));
+    }
 
 
 
