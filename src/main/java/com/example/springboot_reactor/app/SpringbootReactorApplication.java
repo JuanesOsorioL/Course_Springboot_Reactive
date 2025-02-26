@@ -30,9 +30,36 @@ public class SpringbootReactorApplication implements CommandLineRunner {
         // agregando_el_map_a_modelo();
         // agregando_el_map_con_el_operador_filter();
         // ejemplo_map_filter_consumiendo_una_lista();
-        ejemplo_flapmap();
+        // ejemplo_flapmap();
+        ejemplo_flapmap_de_usuario_to_list();
     }
 
+
+    private void ejemplo_flapmap_de_usuario_to_list() {
+        List<Usuario> usuariosList = new ArrayList<>();
+        usuariosList.add(new Usuario("andres"," lopez"));
+        usuariosList.add(new Usuario("pedro","santamaria"));
+        usuariosList.add(new Usuario("juan"," osorio"));
+        usuariosList.add(new Usuario("diego"," lopera"));
+        usuariosList.add(new Usuario("matias"," avendaño"));
+        usuariosList.add(new Usuario("lukas"," bueno"));
+        usuariosList.add(new Usuario("valeria"," lopez"));
+        usuariosList.add(new Usuario("juan"," lopera"));
+
+        Flux.fromIterable(usuariosList)
+                .map(usuario -> usuario.getNombre().toUpperCase().concat(" ").concat(usuario.getApellido().toUpperCase()))
+                .flatMap(nombre -> {
+                    if (nombre.contains(("juan").toUpperCase())) {
+                        return Mono.just(nombre);
+                    }else {
+                        return Mono.empty();
+                    }
+
+                })
+                .map(nombre -> nombre.toLowerCase())
+
+                .subscribe(e -> log.info(e.toString()));
+    }
 
 
     private void ejemplo_flapmap() {
