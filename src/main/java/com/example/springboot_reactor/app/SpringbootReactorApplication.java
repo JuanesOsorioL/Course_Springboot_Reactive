@@ -21,11 +21,34 @@ public class SpringbootReactorApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-
         //  ejecutarPrimerSegmento();
-
        // agregando_el_map_simple();
-        agregando_el_map_a_modelo();
+        // agregando_el_map_a_modelo();
+        agregando_el_map_con_el_operador_filter();
+    }
+
+    private void agregando_el_map_con_el_operador_filter() {
+        Flux<Usuario> nombres = Flux.just("andres lopez", "pedro santamaria", "juan osorio", "diego lopera", "matias avendaño", "lukas bueno", "valeria lopez","juan lopera")
+                .map(nombre -> new Usuario(nombre.split(" ")[0].toUpperCase(),nombre.split(" ")[1].toUpperCase()))
+                .filter(usuario -> usuario.getNombre().equalsIgnoreCase("juan"))
+                .doOnNext(usuario -> {
+                    if (usuario ==null) {
+                        throw new RuntimeException("El nombre no puede ser vacio");
+                    }
+                    System.out.println(usuario.getNombre().concat(" ").concat(usuario.getApellido()));
+                })
+
+                .map(usuario -> {
+                    String nombre = usuario.getNombre().toLowerCase();
+                    usuario.setNombre(nombre);
+                    return usuario;
+                });
+
+        nombres.subscribe(
+                e -> log.info(e.toString()),
+                error -> log.error(error.getMessage()),
+                () -> log.info("Ha finalizado la ejecución del observable con éxito")
+        );
     }
 
     private void agregando_el_map_a_modelo() {
@@ -50,11 +73,6 @@ public class SpringbootReactorApplication implements CommandLineRunner {
                 () -> log.info("Ha finalizado la ejecución del observable con éxito")
         );
     }
-
-
-
-
-
 
     private void agregando_el_map_simple() {
         Flux<String> nombres = Flux.just("andres", "pedro", "juanes", "diego", "matias")
@@ -100,7 +118,5 @@ public class SpringbootReactorApplication implements CommandLineRunner {
                 () -> log.info("Ha finalizado la ejecución del observable con éxito")
         );
     }
-
-
 
 }
