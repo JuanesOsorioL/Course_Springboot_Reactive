@@ -31,9 +31,32 @@ public class SpringbootReactorApplication implements CommandLineRunner {
         // agregando_el_map_con_el_operador_filter();
         // ejemplo_map_filter_consumiendo_una_lista();
         // ejemplo_flapmap();
-        ejemplo_flapmap_de_usuario_to_list();
+        //ejemplo_flapmap_de_usuario_to_list();
+        ejemplo_collectList();
     }
 
+
+
+
+
+
+    private void ejemplo_collectList() {
+        List<Usuario> usuariosList = new ArrayList<>();
+        usuariosList.add(new Usuario("andres"," lopez"));
+        usuariosList.add(new Usuario("pedro","santamaria"));
+        usuariosList.add(new Usuario("juan"," osorio"));
+        usuariosList.add(new Usuario("diego"," lopera"));
+        usuariosList.add(new Usuario("matias"," avendaño"));
+        usuariosList.add(new Usuario("lukas"," bueno"));
+        usuariosList.add(new Usuario("valeria"," lopez"));
+        usuariosList.add(new Usuario("juan"," lopera"));
+
+        Flux.fromIterable(usuariosList)
+                .collectList()
+                .subscribe(lista -> {
+                    lista.forEach(item -> log.info(item.toString()));
+                        });
+    }
 
     private void ejemplo_flapmap_de_usuario_to_list() {
         List<Usuario> usuariosList = new ArrayList<>();
@@ -60,7 +83,6 @@ public class SpringbootReactorApplication implements CommandLineRunner {
 
                 .subscribe(e -> log.info(e.toString()));
     }
-
 
     private void ejemplo_flapmap() {
         List<String> usuariosList = new ArrayList<>();
