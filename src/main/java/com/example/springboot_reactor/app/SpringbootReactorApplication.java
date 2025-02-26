@@ -9,6 +9,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @SpringBootApplication
 public class SpringbootReactorApplication implements CommandLineRunner {
 
@@ -21,18 +24,54 @@ public class SpringbootReactorApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        //  ejecutarPrimerSegmento();
-       // agregando_el_map_simple();
+        // ejecutarPrimerSegmento();
+        // agregando_el_map_simple();
         // agregando_el_map_a_modelo();
-        agregando_el_map_con_el_operador_filter();
+        // agregando_el_map_con_el_operador_filter();
+        ejemplo_map_filter_consumiendo_una_lista();
     }
 
-    private void agregando_el_map_con_el_operador_filter() {
-        Flux<Usuario> nombres = Flux.just("andres lopez", "pedro santamaria", "juan osorio", "diego lopera", "matias avendaño", "lukas bueno", "valeria lopez","juan lopera")
-                .map(nombre -> new Usuario(nombre.split(" ")[0].toUpperCase(),nombre.split(" ")[1].toUpperCase()))
+    private void ejemplo_map_filter_consumiendo_una_lista() {
+        List<String> usuariosList = new ArrayList<>();
+        usuariosList.add("andres lopez");
+        usuariosList.add("pedro santamaria");
+        usuariosList.add("juan osorio");
+        usuariosList.add("diego lopera");
+        usuariosList.add("matias avendaño");
+        usuariosList.add("lukas bueno");
+        usuariosList.add("valeria lopez");
+        usuariosList.add("juan lopera");
+
+        Flux<String> nombres = Flux.fromIterable(usuariosList);
+        Flux<Usuario> usuarios = nombres.map(nombre -> new Usuario(nombre.split(" ")[0].toUpperCase(), nombre.split(" ")[1].toUpperCase()))
                 .filter(usuario -> usuario.getNombre().equalsIgnoreCase("juan"))
                 .doOnNext(usuario -> {
-                    if (usuario ==null) {
+                    if (usuario == null) {
+                        throw new RuntimeException("El nombre no puede ser vacio");
+                    }
+                    System.out.println(usuario.getNombre().concat(" ").concat(usuario.getApellido()));
+                })
+
+                .map(usuario -> {
+                    String nombre = usuario.getNombre().toLowerCase();
+                    usuario.setNombre(nombre);
+                    return usuario;
+                });
+
+        usuarios.subscribe(
+                e -> log.info(e.toString()),
+                error -> log.error(error.getMessage()),
+                () -> log.info("Ha finalizado la ejecución del observable con éxito")
+        );
+    }
+
+
+    private void agregando_el_map_con_el_operador_filter() {
+        Flux<Usuario> nombres = Flux.just("andres lopez", "pedro santamaria", "juan osorio", "diego lopera", "matias avendaño", "lukas bueno", "valeria lopez", "juan lopera")
+                .map(nombre -> new Usuario(nombre.split(" ")[0].toUpperCase(), nombre.split(" ")[1].toUpperCase()))
+                .filter(usuario -> usuario.getNombre().equalsIgnoreCase("juan"))
+                .doOnNext(usuario -> {
+                    if (usuario == null) {
                         throw new RuntimeException("El nombre no puede ser vacio");
                     }
                     System.out.println(usuario.getNombre().concat(" ").concat(usuario.getApellido()));
@@ -53,9 +92,9 @@ public class SpringbootReactorApplication implements CommandLineRunner {
 
     private void agregando_el_map_a_modelo() {
         Flux<Usuario> nombres = Flux.just("andres", "pedro", "juanes", "diego", "matias")
-                .map(nombre -> new Usuario(nombre.toUpperCase(),null))
+                .map(nombre -> new Usuario(nombre.toUpperCase(), null))
                 .doOnNext(usuario -> {
-                    if (usuario ==null) {
+                    if (usuario == null) {
                         throw new RuntimeException("El nombre no puede ser vacio");
                     }
                     System.out.println(usuario.getNombre());
