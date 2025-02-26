@@ -35,7 +35,54 @@ public class SpringbootReactorApplication implements CommandLineRunner {
         // ejemplo_flapmap();
         // ejemplo_flapmap_de_usuario_to_list();
         // ejemplo_collectList();
-        ejemplo_usuarioComentarioFlatMap();
+        // ejemplo_usuarioComentarioFlatMap();
+        // ejemplo_usuarioComentarioZipWith();
+        ejemplo_usuarioComentarioZipWith_Other_forma2();
+    }
+
+    private void ejemplo_usuarioComentarioZipWith_Other_forma2() {
+        Mono<Usuario> usuarioMono=Mono.fromCallable(()->new Usuario("juan","carlos"));
+
+        Mono<Comentarios> comentariosUsuarioMono=Mono.fromCallable(()->{
+            Comentarios comentarios=new Comentarios();
+            comentarios.addComentario("primer comentario");
+            comentarios.addComentario("segundo comentario");
+            comentarios.addComentario("tercero comentario");
+            comentarios.addComentario("cuarto comentario");
+            return comentarios;
+        });
+
+        Mono<UsuarioComentarios> UsuarioComentarios = usuarioMono
+                .zipWith(comentariosUsuarioMono)
+                        .map(tuple->{
+                            Usuario usuario=tuple.getT1();
+                            Comentarios comentarios=tuple.getT2();
+                            return new UsuarioComentarios(usuario,comentarios);
+                        });
+
+        UsuarioComentarios.subscribe(usuarioComentarios -> log.info(usuarioComentarios.toString()));
+    }
+
+
+
+
+    private void ejemplo_usuarioComentarioZipWith() {
+        Mono<Usuario> usuarioMono=Mono.fromCallable(()->new Usuario("juan","carlos"));
+
+        Mono<Comentarios> comentariosUsuarioMono=Mono.fromCallable(()->{
+            Comentarios comentarios=new Comentarios();
+            comentarios.addComentario("primer comentario");
+            comentarios.addComentario("segundo comentario");
+            comentarios.addComentario("tercero comentario");
+            comentarios.addComentario("cuarto comentario");
+            return comentarios;
+        });
+
+        Mono<UsuarioComentarios> UsuarioComentarios = usuarioMono
+                .zipWith(comentariosUsuarioMono,
+                        (usuario, comentarios) -> new UsuarioComentarios(usuario,comentarios));
+
+        UsuarioComentarios.subscribe(usuarioComentarios -> log.info(usuarioComentarios.toString()));
     }
 
     private void ejemplo_usuarioComentarioFlatMap() {
@@ -53,9 +100,6 @@ public class SpringbootReactorApplication implements CommandLineRunner {
       usuarioMono.flatMap(usuario -> comentariosUsuarioMono.map(comentarios -> new UsuarioComentarios(usuario,comentarios)))
               .subscribe(usuarioComentarios -> log.info(usuarioComentarios.toString()));
     }
-
-
-
 
     private void ejemplo_collectList() {
         List<Usuario> usuariosList = new ArrayList<>();
