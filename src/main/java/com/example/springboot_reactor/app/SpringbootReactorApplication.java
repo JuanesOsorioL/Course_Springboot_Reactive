@@ -37,8 +37,22 @@ public class SpringbootReactorApplication implements CommandLineRunner {
         // ejemplo_collectList();
         // ejemplo_usuarioComentarioFlatMap();
         // ejemplo_usuarioComentarioZipWith();
-        ejemplo_usuarioComentarioZipWith_Other_forma2();
+        // ejemplo_usuarioComentarioZipWith_Other_forma2();
+        ejemplo_ZipWith_Rangos_combinarDosFlujosDistintos();
     }
+
+    private void ejemplo_ZipWith_Rangos_combinarDosFlujosDistintos() {
+        Flux<Integer> rangos = Flux.range(0, 4);
+        Flux.just(1, 2, 3,4)
+                .map(i -> i * 2)
+                .zipWith(rangos, (uno,dos) -> String.format("Primer Flux %d, Segundo Flux %d", uno, dos))
+                .subscribe(v-> log.info(String.valueOf(v)));
+    }
+
+
+
+
+
 
     private void ejemplo_usuarioComentarioZipWith_Other_forma2() {
         Mono<Usuario> usuarioMono=Mono.fromCallable(()->new Usuario("juan","carlos"));
@@ -62,9 +76,6 @@ public class SpringbootReactorApplication implements CommandLineRunner {
 
         UsuarioComentarios.subscribe(usuarioComentarios -> log.info(usuarioComentarios.toString()));
     }
-
-
-
 
     private void ejemplo_usuarioComentarioZipWith() {
         Mono<Usuario> usuarioMono=Mono.fromCallable(()->new Usuario("juan","carlos"));
