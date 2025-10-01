@@ -4,6 +4,8 @@ package com.example.springboot_reactor.app;
 import com.example.springboot_reactor.app.models.Comentarios;
 import com.example.springboot_reactor.app.models.Usuario;
 import com.example.springboot_reactor.app.models.UsuarioComentarios;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -12,8 +14,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.CountDownLatch;
 
 @SpringBootApplication
 public class SpringbootReactorApplication implements CommandLineRunner {
@@ -38,27 +44,134 @@ public class SpringbootReactorApplication implements CommandLineRunner {
         // ejemplo_usuarioComentarioFlatMap();
         // ejemplo_usuarioComentarioZipWith();
         // ejemplo_usuarioComentarioZipWith_Other_forma2();
-        ejemplo_ZipWith_Rangos_combinarDosFlujosDistintos();
+        // ejemplo_ZipWith_Rangos_combinarDosFlujosDistintos();
+        // ejemplo_Intervalo();
+        // ejemplo_DelayElements();
+        // ejemplo_Intervalo_infinito();
+        //ejemplo_Intervalo_Desde_Create();
+        //ejemplo_Contra_Presion();
+        ejemplo_Contra_Presion_forma_dos();
+    }
+
+
+    private void ejemplo_Contra_Presion_forma_dos() {
+        Flux.range(1, 10)
+                .log()
+                .limitRate(5)
+                .subscribe();
+    }
+
+
+
+    private void ejemplo_Contra_Presion() {
+        Flux.range(1, 10)
+                .log()
+                .subscribe(new Subscriber<Integer>() {
+
+                    private Subscription subscription;
+                    private Integer limite = 5;
+                    private Integer conusmido = 0;
+
+                    @Override
+                    public void onSubscribe(Subscription s) {
+                        this.subscription = s;
+                        s.request(limite);
+                    }
+
+                    @Override
+                    public void onNext(Integer integer) {
+                        log.info(integer.toString());
+                        conusmido++;
+                        if (conusmido.equals(limite)) {
+                            conusmido = 0;
+                            subscription.request(limite);
+                        }
+
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+
+                    }
+
+                    @Override
+                    public void onComplete() {
+
+                    }
+                });
+    }
+
+
+    private void ejemplo_Intervalo_Desde_Create() {
+        Flux.create(emitter -> {
+            Timer timer = new Timer();
+            timer.schedule(new TimerTask() {
+                private Integer contador = 0;
+
+                @Override
+                public void run() {
+                    emitter.next(++contador);
+                    if (contador == 10) {
+                        emitter.complete();
+                        timer.cancel();
+                    }
+                    if (contador == 5) {
+                        timer.cancel();
+                        emitter.error(new InterruptedException("Error, se ha detenido en 5"));
+                    }
+                }
+            }, 1000, 1000);
+
+        }).subscribe(n -> log.info(n.toString()),
+                e -> log.error(e.getMessage()),
+                () -> log.info("Hemos terminado"));
+    }
+
+    private void ejemplo_Intervalo_infinito() throws InterruptedException {
+
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Flux.interval(Duration.ofSeconds(1))
+                .doOnTerminate(latch::countDown)
+                .flatMap(e -> e >= 5 ? Flux.error(new InterruptedException("solo hasta 5")) : Flux.just(e))
+                .map(i -> "hola " + i)
+                .retry(2)
+                .subscribe(log::info, e -> log.error(e.getMessage()));
+
+        latch.await();
+
+    }
+
+    private void ejemplo_DelayElements() throws InterruptedException {
+        Flux<Integer> rangos = Flux.range(1, 12)
+                .delayElements(Duration.ofSeconds(1))
+                .doOnNext(i -> log.info(i.toString()));
+        rangos.subscribe();
+        //rangos.blockLast()
+        Thread.sleep(13000);
+    }
+
+    private void ejemplo_Intervalo() {
+        Flux<Integer> rangos = Flux.range(0, 12);
+        Flux<Long> retraso = Flux.interval(Duration.ofSeconds(1));
+
+        rangos.zipWith(retraso, (ra, re) -> ra).doOnNext(System.out::println).blockLast();
+
     }
 
     private void ejemplo_ZipWith_Rangos_combinarDosFlujosDistintos() {
         Flux<Integer> rangos = Flux.range(0, 4);
-        Flux.just(1, 2, 3,4)
+        Flux.just(1, 2, 3, 4)
                 .map(i -> i * 2)
-                .zipWith(rangos, (uno,dos) -> String.format("Primer Flux %d, Segundo Flux %d", uno, dos))
-                .subscribe(v-> log.info(String.valueOf(v)));
+                .zipWith(rangos, (uno, dos) -> String.format("Primer Flux %d, Segundo Flux %d", uno, dos))
+                .subscribe(v -> log.info(String.valueOf(v)));
     }
 
-
-
-
-
-
     private void ejemplo_usuarioComentarioZipWith_Other_forma2() {
-        Mono<Usuario> usuarioMono=Mono.fromCallable(()->new Usuario("juan","carlos"));
+        Mono<Usuario> usuarioMono = Mono.fromCallable(() -> new Usuario("juan", "carlos"));
 
-        Mono<Comentarios> comentariosUsuarioMono=Mono.fromCallable(()->{
-            Comentarios comentarios=new Comentarios();
+        Mono<Comentarios> comentariosUsuarioMono = Mono.fromCallable(() -> {
+            Comentarios comentarios = new Comentarios();
             comentarios.addComentario("primer comentario");
             comentarios.addComentario("segundo comentario");
             comentarios.addComentario("tercero comentario");
@@ -68,20 +181,20 @@ public class SpringbootReactorApplication implements CommandLineRunner {
 
         Mono<UsuarioComentarios> UsuarioComentarios = usuarioMono
                 .zipWith(comentariosUsuarioMono)
-                        .map(tuple->{
-                            Usuario usuario=tuple.getT1();
-                            Comentarios comentarios=tuple.getT2();
-                            return new UsuarioComentarios(usuario,comentarios);
-                        });
+                .map(tuple -> {
+                    Usuario usuario = tuple.getT1();
+                    Comentarios comentarios = tuple.getT2();
+                    return new UsuarioComentarios(usuario, comentarios);
+                });
 
         UsuarioComentarios.subscribe(usuarioComentarios -> log.info(usuarioComentarios.toString()));
     }
 
     private void ejemplo_usuarioComentarioZipWith() {
-        Mono<Usuario> usuarioMono=Mono.fromCallable(()->new Usuario("juan","carlos"));
+        Mono<Usuario> usuarioMono = Mono.fromCallable(() -> new Usuario("juan", "carlos"));
 
-        Mono<Comentarios> comentariosUsuarioMono=Mono.fromCallable(()->{
-            Comentarios comentarios=new Comentarios();
+        Mono<Comentarios> comentariosUsuarioMono = Mono.fromCallable(() -> {
+            Comentarios comentarios = new Comentarios();
             comentarios.addComentario("primer comentario");
             comentarios.addComentario("segundo comentario");
             comentarios.addComentario("tercero comentario");
@@ -89,70 +202,69 @@ public class SpringbootReactorApplication implements CommandLineRunner {
             return comentarios;
         });
 
-        Mono<UsuarioComentarios> UsuarioComentarios = usuarioMono
+        Mono<UsuarioComentarios> UsuarioConComentarios = usuarioMono
                 .zipWith(comentariosUsuarioMono,
-                        (usuario, comentarios) -> new UsuarioComentarios(usuario,comentarios));
+                        (usuario, comentarios) -> new UsuarioComentarios(usuario, comentarios));
 
-        UsuarioComentarios.subscribe(usuarioComentarios -> log.info(usuarioComentarios.toString()));
+        UsuarioConComentarios.subscribe(usuarioComentarios -> log.info(usuarioComentarios.toString()));
     }
 
     private void ejemplo_usuarioComentarioFlatMap() {
-      Mono<Usuario> usuarioMono=Mono.fromCallable(()->new Usuario("juan","carlos"));
+        Mono<Usuario> usuarioMono = Mono.fromCallable(() -> new Usuario("juan", "carlos"));
 
-      Mono<Comentarios> comentariosUsuarioMono=Mono.fromCallable(()->{
-          Comentarios comentarios=new Comentarios();
-          comentarios.addComentario("primer comentario");
-          comentarios.addComentario("segundo comentario");
-          comentarios.addComentario("tercero comentario");
-          comentarios.addComentario("cuarto comentario");
-          return comentarios;
-      });
+        Mono<Comentarios> comentariosUsuarioMono = Mono.fromCallable(() -> {
+            Comentarios comentarios = new Comentarios();
+            comentarios.addComentario("primer comentario");
+            comentarios.addComentario("segundo comentario");
+            comentarios.addComentario("tercero comentario");
+            comentarios.addComentario("cuarto comentario");
+            return comentarios;
+        });
 
-      usuarioMono.flatMap(usuario -> comentariosUsuarioMono.map(comentarios -> new UsuarioComentarios(usuario,comentarios)))
-              .subscribe(usuarioComentarios -> log.info(usuarioComentarios.toString()));
+        usuarioMono.flatMap(usuario -> comentariosUsuarioMono.map(comentarios -> new UsuarioComentarios(usuario, comentarios)))
+                .subscribe(usuarioComentarios -> log.info(usuarioComentarios.toString()));
     }
 
     private void ejemplo_collectList() {
         List<Usuario> usuariosList = new ArrayList<>();
-        usuariosList.add(new Usuario("andres"," lopez"));
-        usuariosList.add(new Usuario("pedro","santamaria"));
-        usuariosList.add(new Usuario("juan"," osorio"));
-        usuariosList.add(new Usuario("diego"," lopera"));
-        usuariosList.add(new Usuario("matias"," avendaño"));
-        usuariosList.add(new Usuario("lukas"," bueno"));
-        usuariosList.add(new Usuario("valeria"," lopez"));
-        usuariosList.add(new Usuario("juan"," lopera"));
+        usuariosList.add(new Usuario("andres", " lopez"));
+        usuariosList.add(new Usuario("pedro", "santamaria"));
+        usuariosList.add(new Usuario("juan", " osorio"));
+        usuariosList.add(new Usuario("diego", " lopera"));
+        usuariosList.add(new Usuario("matias", " avendaño"));
+        usuariosList.add(new Usuario("lukas", " bueno"));
+        usuariosList.add(new Usuario("valeria", " lopez"));
+        usuariosList.add(new Usuario("juan", " lopera"));
 
         Flux.fromIterable(usuariosList)
                 .collectList()
-                .subscribe(lista -> {
-                    lista.forEach(item -> log.info(item.toString()));
-                        });
+                .subscribe(lista ->
+                        lista.forEach(item -> log.info(item.toString()))
+                );
     }
 
     private void ejemplo_flapmap_de_usuario_to_list() {
         List<Usuario> usuariosList = new ArrayList<>();
-        usuariosList.add(new Usuario("andres"," lopez"));
-        usuariosList.add(new Usuario("pedro","santamaria"));
-        usuariosList.add(new Usuario("juan"," osorio"));
-        usuariosList.add(new Usuario("diego"," lopera"));
-        usuariosList.add(new Usuario("matias"," avendaño"));
-        usuariosList.add(new Usuario("lukas"," bueno"));
-        usuariosList.add(new Usuario("valeria"," lopez"));
-        usuariosList.add(new Usuario("juan"," lopera"));
+        usuariosList.add(new Usuario("andres", " lopez"));
+        usuariosList.add(new Usuario("pedro", "santamaria"));
+        usuariosList.add(new Usuario("juan", " osorio"));
+        usuariosList.add(new Usuario("diego", " lopera"));
+        usuariosList.add(new Usuario("matias", " avendaño"));
+        usuariosList.add(new Usuario("lukas", " bueno"));
+        usuariosList.add(new Usuario("valeria", " lopez"));
+        usuariosList.add(new Usuario("juan", " lopera"));
 
         Flux.fromIterable(usuariosList)
                 .map(usuario -> usuario.getNombre().toUpperCase().concat(" ").concat(usuario.getApellido().toUpperCase()))
                 .flatMap(nombre -> {
                     if (nombre.contains(("juan").toUpperCase())) {
                         return Mono.just(nombre);
-                    }else {
+                    } else {
                         return Mono.empty();
                     }
 
                 })
-                .map(nombre -> nombre.toLowerCase())
-
+                .map(String::toLowerCase)
                 .subscribe(e -> log.info(e.toString()));
     }
 
@@ -172,7 +284,7 @@ public class SpringbootReactorApplication implements CommandLineRunner {
                 .flatMap(usuario -> {
                     if (usuario.getNombre().equalsIgnoreCase("juan")) {
                         return Mono.just(usuario);
-                    }else {
+                    } else {
                         return Mono.empty();
                     }
 
@@ -183,7 +295,7 @@ public class SpringbootReactorApplication implements CommandLineRunner {
                     return usuario;
                 })
 
-        .subscribe(e -> log.info(e.toString()));
+                .subscribe(e -> log.info(e.toString()));
     }
 
     private void ejemplo_map_filter_consumiendo_una_lista() {
@@ -267,7 +379,7 @@ public class SpringbootReactorApplication implements CommandLineRunner {
         );
     }
 
-    private void agregando_el_map_simple()  {
+    private void agregando_el_map_simple() {
         Flux<String> nombres = Flux.just("andres", "pedro", "juanes", "diego", "matias")
                 .map(nombre -> {
                     return nombre.toUpperCase();
