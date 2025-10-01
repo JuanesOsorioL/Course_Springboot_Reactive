@@ -267,7 +267,7 @@ public class SpringbootReactorApplication implements CommandLineRunner {
         );
     }
 
-    private void agregando_el_map_simple() {
+    private void agregando_el_map_simple()  {
         Flux<String> nombres = Flux.just("andres", "pedro", "juanes", "diego", "matias")
                 .map(nombre -> {
                     return nombre.toUpperCase();
@@ -297,6 +297,7 @@ public class SpringbootReactorApplication implements CommandLineRunner {
     }
 
     private void ejecutarPrimerSegmento() {
+
         Flux<String> nombres = Flux.just("andres", "pedro", "juanes", "diego", "matias")
                 .doOnNext(e -> {
                     if (e.isEmpty()) {
